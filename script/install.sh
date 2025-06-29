@@ -8,6 +8,7 @@ CYAN='\033[0;1;36;96m'
 BLUE='\033[0;1;34;94m'
 NC='\033[0m'
 
+
 TARGET_FOLDER="/opt/QQ/resources/app/app_launcher"
 
 function logo() {
@@ -99,27 +100,30 @@ function get_system_arch() {
 function detect_package_manager() {
     if command -v apt-get &> /dev/null; then
         package_manager="apt-get"
+        package_installer="dpkg" # 确定为 dpkg
     elif command -v dnf &> /dev/null; then
         package_manager="dnf"
+        package_installer="rpm"   # 确定为 rpm
         dnf_is_el_or_fedora
     else
         log "高级包管理器检查失败, 目前仅支持apt-get/dnf。"
         exit 1
     fi
     log "当前高级包管理器: ${package_manager}"
-}
-
-function detect_package_installer() {
-    if command -v dpkg &> /dev/null; then
-        package_installer="dpkg"
-    elif command -v rpm &> /dev/null; then
-        package_installer="rpm"
-    else
-        log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
-        exit 1
-    fi
     log "当前基础包管理器: ${package_installer}"
 }
+
+# function detect_package_installer() {
+#     if command -v dpkg &> /dev/null; then
+#         package_installer="dpkg"
+#     elif command -v rpm &> /dev/null; then
+#         package_installer="rpm"
+#     else
+#         log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
+#         exit 1
+#     fi
+#     log "当前基础包管理器: ${package_installer}"
+# }
 
 function dnf_is_el_or_fedora() {
     if [ -f "/etc/fedora-release" ]; then
@@ -343,9 +347,8 @@ function download_napcat() {
 }
 
 function get_qq_target_version() {
-    #固定 3.2.17-34740
-    linuxqq_target_version="3.2.17-34740"
-
+    #固定 3.2.18-36580
+    linuxqq_target_version="3.2.18-36580"
     #linuxqq_target_version=$(jq -r '.linuxVersion' ./NapCat/qqnt.json)
     #linuxqq_target_verhash=$(jq -r '.linuxVerHash' ./NapCat/qqnt.json)
     
@@ -403,7 +406,7 @@ function check_linuxqq(){
     fi
 
     linuxqq_target_build=${linuxqq_target_version##*-}
-    detect_package_installer
+    #detect_package_installer 不再使用改版本
 
     log "最低linuxQQ版本: ${linuxqq_target_version}, 构建: ${linuxqq_target_build}"
     if [ "${force}" = "y" ]; then
@@ -600,18 +603,17 @@ function install_linuxqq() {
     #         qq_download_url="${base_url}_arm64.deb"
     #     fi
     # fi
-
     if [ "${system_arch}" = "amd64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_x86_64.rpm"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_x86_64.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_amd64.deb"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_amd64.deb"
         fi
     elif [ "${system_arch}" = "arm64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_aarch64.rpm"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_aarch64.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_arm64.deb"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_arm64.deb"
         fi
     fi
 
@@ -738,6 +740,7 @@ function install_napcat() {
 
     sudo chmod -R 777 "${TARGET_FOLDER}/napcat/"
     log "正在修补文件..."
+    # TODO: FIXME: 实际上下面的这种重定向会导致权限问题 ,但是由于脚本在启动时强制要求了必须使用root权限运行, 所以这里的bug并不会被触发 
     sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
     if [ $? -ne 0 ]; then
         log "loadNapCat.js文件写入失败, 请检查错误。"
