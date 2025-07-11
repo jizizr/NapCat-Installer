@@ -48,12 +48,12 @@ function print_introduction() {
     echo -e "${BLUE}接下来，您可以选择安装方式:${NC}"
     echo -e "  1. ${GREEN}Docker 安装${NC}: ${BLUE}通过容器运行。${NC}"
     echo -e "  2. ${GREEN}本地安装${NC}: ${BLUE}直接在本系统执行安装。分为下面两种：${NC}(${YELLOW}默认${NC})${NC}"
-	echo -e "  	 - ${GREEN}可视化安装${NC}: ${BLUE}通过交互式界面来引导你安装。${NC}"
+    echo -e "  	 - ${GREEN}可视化安装${NC}: ${BLUE}通过交互式界面来引导你安装。${NC}"
     echo -e "  	 - ${GREEN}Shell 安装${NC}: ${BLUE}直接在当前Shell会话执行安装。${NC}(${YELLOW}默认${NC})${NC}"
     echo ""
     echo -e "${BLUE}您可以选择安装的组件方式:${NC}"
     echo -e "  - ${CYAN}NapCat TUI-CLI${NC}: ${BLUE}允许你在 ssh、没有桌面、WebUI 难以使用的情况下可视化交互配置 Napcat${NC}"
-	echo ""
+    echo ""
     echo -e "${BLUE}使用 --help 来获取更多功能介绍${NC}"
     echo -e "${BLUE}--------------------------------------------------${NC}"
 }
@@ -70,7 +70,7 @@ function execute_command() {
 }
 
 function check_sudo() {
-    if ! command -v sudo &> /dev/null; then
+    if ! command -v sudo &>/dev/null; then
         log "sudo不存在, 请手动安装: \n Centos: dnf install -y sudo\n Debian/Ubuntu: apt-get install -y sudo\n"
         exit 1
     fi
@@ -97,29 +97,32 @@ function get_system_arch() {
 }
 
 function detect_package_manager() {
-    if command -v apt-get &> /dev/null; then
+    if command -v apt-get &>/dev/null; then
         package_manager="apt-get"
-    elif command -v dnf &> /dev/null; then
+        package_installer="dpkg" # 确定为 dpkg
+    elif command -v dnf &>/dev/null; then
         package_manager="dnf"
+        package_installer="rpm" # 确定为 rpm
         dnf_is_el_or_fedora
     else
         log "高级包管理器检查失败, 目前仅支持apt-get/dnf。"
         exit 1
     fi
     log "当前高级包管理器: ${package_manager}"
-}
-
-function detect_package_installer() {
-    if command -v dpkg &> /dev/null; then
-        package_installer="dpkg"
-    elif command -v rpm &> /dev/null; then
-        package_installer="rpm"
-    else
-        log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
-        exit 1
-    fi
     log "当前基础包管理器: ${package_installer}"
 }
+
+# function detect_package_installer() {
+#     if command -v dpkg &> /dev/null; then
+#         package_installer="dpkg"
+#     elif command -v rpm &> /dev/null; then
+#         package_installer="rpm"
+#     else
+#         log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
+#         exit 1
+#     fi
+#     log "当前基础包管理器: ${package_installer}"
+# }
 
 function dnf_is_el_or_fedora() {
     if [ -f "/etc/fedora-release" ]; then
@@ -132,7 +135,7 @@ function dnf_is_el_or_fedora() {
 function network_test() {
     local parm1=${1}
     local found=0
-    local timeout=10  # 设置超时秒数
+    local timeout=10 # 设置超时秒数
     local status=0
     target_proxy=""
 
@@ -143,7 +146,7 @@ function network_test() {
     log "命令行传入代理参数 (proxy_num_arg): '${proxy_num_arg}', 本次测试生效设置: '${current_proxy_setting}'"
 
     if [ "${parm1}" == "Github" ]; then
-        proxy_arr=("https://ghfast.top"  "https://gh.wuliya.xin" "https://gh-proxy.com")
+        proxy_arr=("https://ghfast.top" "https://git.yylx.win/" "https://gh-proxy.com" "https://ghfile.geekertao.top" "https://gh-proxy.net" "https://j.1win.ggff.net" "https://ghm.078465.xyz" "https://gitproxy.127731.xyz" "https://jiashu.1win.eu.org" "https://github.tbedu.top")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
         proxy_arr=("docker.1ms.run" "docker.xuanyuan.me" "docker.mybacc.com" "dytt.online" "lispy.org")
@@ -152,37 +155,36 @@ function network_test() {
         log "错误: 未知的网络测试目标 '${parm1}', 默认测试 Github"
         parm1="Github" # 确保 parm1 被重置以便后续逻辑正确执行
         # 为 Github 重置 proxy_arr 和 check_url
-        proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
+        proxy_arr=("https://ghfast.top" "https://git.yylx.win/" "https://gh-proxy.com" "https://ghfile.geekertao.top" "https://gh-proxy.net" "https://j.1win.ggff.net" "https://ghm.078465.xyz" "https://gitproxy.127731.xyz" "https://jiashu.1win.eu.org" "https://github.tbedu.top")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     fi
 
     # 后续逻辑中使用 current_proxy_setting
     # 1: 指定了有效的代理服务器序号 (1 到 N)
     if [[ "${current_proxy_setting}" -ge 1 && "${current_proxy_setting}" -le ${#proxy_arr[@]} ]]; then
-        log "手动指定代理: ${proxy_arr[$((current_proxy_setting-1))]}" # 数组索引从0开始
-        target_proxy="${proxy_arr[$((current_proxy_setting-1))]}"
+        log "手动指定代理: ${proxy_arr[$((current_proxy_setting - 1))]}" # 数组索引从0开始
+        target_proxy="${proxy_arr[$((current_proxy_setting - 1))]}"
     # 2: 指定了 0 (禁用代理), 或未指定 (默认为9, 自动测试), 或指定了无效序号
     else
         # current_proxy_setting 不是 0, 则表示需要自动测试代理 (例如为9) 或指定了无效序号
         if [ "${current_proxy_setting}" -ne 0 ]; then
             log "代理设置为自动测试或指定无效 ('${current_proxy_setting}'), 正在检查 ${parm1} 代理可用性..."
-            
+
             # 仅当存在 check_url 或测试目标是 Docker (它会测试代理根路径)
             if [ -n "${check_url}" ] || [ "${parm1}" == "Docker" ]; then
                 for proxy_candidate in "${proxy_arr[@]}"; do
                     local test_target_url
                     if [ -n "${check_url}" ]; then
                         test_target_url="${proxy_candidate}/${check_url}"
-                    else # Docker 且 check_url 为空的情况
+                    else                                      # Docker 且 check_url 为空的情况
                         test_target_url="${proxy_candidate}/" # 测试代理的根路径
                     fi
 
                     log "测试代理: ${proxy_candidate} (目标URL: ${test_target_url})"
                     # 从 curl 命令获取 HTTP 状态码和退出码
-                    status_and_exit_code=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${test_target_url}")
+                    status_and_exit_code=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout * 2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${test_target_url}")
                     status=$(echo "${status_and_exit_code}" | cut -d: -f1)
                     curl_exit_code=$(echo "${status_and_exit_code}" | cut -d: -f2)
-
 
                     if [ "${curl_exit_code}" -ne 0 ]; then
                         log "代理 ${proxy_candidate} 测试失败或超时 (curl 退出码: ${curl_exit_code})"
@@ -190,8 +192,8 @@ function network_test() {
                     fi
 
                     # HTTP 状态码
-                    if ([ "${parm1}" == "Github" ] && [ "${status}" -eq 200 ]) || \
-                       ([ "${parm1}" == "Docker" ] && ([ "${status}" -eq 200 ] || [ "${status}" -eq 301 ] || [ "${status}" -eq 302 ])); then # 302重定向
+                    if ([ "${parm1}" == "Github" ] && [ "${status}" -eq 200 ]) ||
+                        ([ "${parm1}" == "Docker" ] && ([ "${status}" -eq 200 ] || [ "${status}" -eq 301 ] || [ "${status}" -eq 302 ])); then # 302重定向
                         found=1
                         target_proxy="${proxy_candidate}"
                         log "将使用 ${parm1} 代理: ${target_proxy}"
@@ -201,15 +203,15 @@ function network_test() {
                     fi
                 done
             else
-                 log "警告: ${parm1} 代理测试缺少有效的检查URL, 无法自动选择代理。"
-                 # target_proxy 保持为空
+                log "警告: ${parm1} 代理测试缺少有效的检查URL, 无法自动选择代理。"
+                # target_proxy 保持为空
             fi
 
             if [ ${found} -eq 0 ]; then
                 log "警告: 无法找到可用的 ${parm1} 代理。"
                 if [ -n "${check_url}" ]; then # 仅当有检查URL时才尝试直连
                     log "将尝试直连 ${check_url}..."
-                    status_and_exit_code=$(curl -k --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${check_url}")
+                    status_and_exit_code=$(curl -k --connect-timeout ${timeout} --max-time $((timeout * 2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${check_url}")
                     status=$(echo "${status_and_exit_code}" | cut -d: -f1)
                     curl_exit_code=$(echo "${status_and_exit_code}" | cut -d: -f2)
 
@@ -230,7 +232,7 @@ function network_test() {
             log "代理已通过参数关闭 (序号 0), 将直接连接 ${parm1}..."
             target_proxy="" # 确保没有设置代理
             if [ -n "${check_url}" ]; then
-                status_and_exit_code=$(curl -k --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${check_url}")
+                status_and_exit_code=$(curl -k --connect-timeout ${timeout} --max-time $((timeout * 2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${check_url}")
                 status=$(echo "${status_and_exit_code}" | cut -d: -f1)
                 curl_exit_code=$(echo "${status_and_exit_code}" | cut -d: -f2)
                 if [ "${curl_exit_code}" -eq 0 ] && [ "${status}" -eq 200 ]; then
@@ -244,7 +246,25 @@ function network_test() {
         fi
     fi
 }
-
+function install_el_repo() {
+    # 检查是否为 OpenCloudOS 9+
+    if [ -f "/etc/opencloudos-release" ]; then
+        # 提取主版本号
+        os_version=$(grep -oE '[0-9]+' /etc/opencloudos-release | head -n 1)
+        if [[ -n "$os_version" && "$os_version" -ge 9 ]]; then
+            log "检测到 OpenCloudOS 9+, 安装 epol-release..."
+            execute_command "sudo dnf install -y epol-release" "安装epol"
+        else
+            # 低于 9 或无法确定版本，回退到 epel
+            log "OpenCloudOS 版本低于 9 或无法确定版本, 安装 epel-release..."
+            execute_command "sudo dnf install -y epel-release" "安装epel"
+        fi
+    else
+        # 其他 EL 系统，安装 epel
+        log "非 OpenCloudOS 的 EL 系统, 安装 epel-release..."
+        execute_command "sudo dnf install -y epel-release" "安装epel"
+    fi
+}
 # 似乎是适配的系统较少
 function install_dependency() {
     log "开始更新依赖..."
@@ -255,7 +275,7 @@ function install_dependency() {
         execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
     elif [ "${package_manager}" = "dnf" ]; then
         if [ "${dnf_host}" = "el" ]; then
-            execute_command "sudo dnf install -y epel-release" "安装epel"
+            install_el_repo
         fi
         execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     fi
@@ -283,7 +303,7 @@ function clean() {
         sudo rm -f /etc/init.d/napcat
     fi
     if [ -d "${TARGET_FOLDER}/napcat.packet" ]; then
-        sudo rm -rf  "${TARGET_FOLDER}/napcat.packet"
+        sudo rm -rf "${TARGET_FOLDER}/napcat.packet"
     fi
 }
 
@@ -296,7 +316,7 @@ function download_napcat() {
         log "开始下载NapCat安装包,请稍等..."
         network_test "Github"
         napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
-        
+
         curl -k -L -# "${napcat_download_url}" -o "${default_file}"
         if [ $? -ne 0 ]; then
             log "文件下载失败, 请检查错误。或者手动下载压缩包并放在脚本同目录下"
@@ -326,7 +346,7 @@ function download_napcat() {
     fi
 
     log "正在验证 ${default_file}..."
-    sudo unzip -t "${default_file}" > /dev/null 2>&1
+    sudo unzip -t "${default_file}" >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         log "文件验证失败, 请检查错误。"
         clean
@@ -343,27 +363,26 @@ function download_napcat() {
 }
 
 function get_qq_target_version() {
-    #固定 3.2.17-34740
-    linuxqq_target_version="3.2.17-34740"
-
+    #固定 3.2.18-36580
+    linuxqq_target_version="3.2.18-36580"
     #linuxqq_target_version=$(jq -r '.linuxVersion' ./NapCat/qqnt.json)
     #linuxqq_target_verhash=$(jq -r '.linuxVerHash' ./NapCat/qqnt.json)
-    
+
 }
 
 function compare_linuxqq_versions() {
     local ver1="${1}" #当前版本
     local ver2="${2}" #目标版本
 
-    IFS='.-' read -r -a ver1_parts <<< "${ver1}"
-    IFS='.-' read -r -a ver2_parts <<< "${ver2}"
+    IFS='.-' read -r -a ver1_parts <<<"${ver1}"
+    IFS='.-' read -r -a ver2_parts <<<"${ver2}"
 
     local length=${#ver1_parts[@]}
     if [ ${#ver2_parts[@]} -lt $length ]; then
         length=${#ver2_parts[@]}
     fi
 
-    for ((i=0; i<length; i++)); do
+    for ((i = 0; i < length; i++)); do
         if ((ver1_parts[i] > ver2_parts[i])); then
             force="n"
             return
@@ -382,12 +401,12 @@ function compare_linuxqq_versions() {
     fi
 }
 
-function check_linuxqq(){
+function check_linuxqq() {
     get_qq_target_version
     linuxqq_package_name="linuxqq"
-    local qq_package_json_path="/opt/QQ/resources/app/package.json" # QQ包json路径
+    local qq_package_json_path="/opt/QQ/resources/app/package.json"             # QQ包json路径
     local napcat_config_path="/opt/QQ/resources/app/app_launcher/napcat/config" # Napcat config
-    local backup_path="/tmp/napcat_config_backup_$(date +%s)" # 备份文件夹路径
+    local backup_path="/tmp/napcat_config_backup_$(date +%s)"                   # 备份文件夹路径
 
     if [[ -z "${linuxqq_target_version}" || "${linuxqq_target_version}" == "null" ]]; then
         log "无法获取目标QQ版本, 请检查错误。"
@@ -403,7 +422,7 @@ function check_linuxqq(){
     fi
 
     linuxqq_target_build=${linuxqq_target_version##*-}
-    detect_package_installer
+    #detect_package_installer 不再使用改版本
 
     log "最低linuxQQ版本: ${linuxqq_target_version}, 构建: ${linuxqq_target_build}"
     if [ "${force}" = "y" ]; then
@@ -434,7 +453,7 @@ function check_linuxqq(){
 
         # package manager
         if [ "${package_installer}" = "rpm" ]; then
-            if rpm -q ${linuxqq_package_name} &> /dev/null; then
+            if rpm -q ${linuxqq_package_name} &>/dev/null; then
                 qq_is_installed=true
             fi
         elif [ "${package_installer}" = "dpkg" ]; then
@@ -455,22 +474,22 @@ function check_linuxqq(){
         else
             # 如果没有安装 LinuxQQ, 但 package.json 存在, 则提示用户
             if [ "${package_json_exists}" = true ]; then
-                 log "包管理器未记录 LinuxQQ 安装, 但将继续执行安装/重装流程。"
+                log "包管理器未记录 LinuxQQ 安装, 但将继续执行安装/重装流程。"
             else
-                 log "未检测到已安装的 LinuxQQ 或其核心文件, 将进行全新安装。"
+                log "未检测到已安装的 LinuxQQ 或其核心文件, 将进行全新安装。"
             fi
         fi
         # --- 完成卸载 ---
 
         # --- 执行安装 ---
-        install_linuxqq 
+        install_linuxqq
         # --- 完成安装 ---
 
         # --- 回复备份 ---
         if [ "${backup_created}" = true ]; then
             log "准备恢复 Napcat 配置从 ${backup_path}..."
             if ! sudo mkdir -p "${napcat_config_path}"; then
-                 log "严重警告: 无法创建目标配置目录 (${napcat_config_path}) 进行恢复。"
+                log "严重警告: 无法创建目标配置目录 (${napcat_config_path}) 进行恢复。"
             else
                 # 恢复配置
                 if sudo cp -a "${backup_path}/." "${napcat_config_path}/"; then
@@ -490,7 +509,7 @@ function check_linuxqq(){
         # --- 完成回复配置 ---
     else
         if [ "${package_installer}" = "rpm" ]; then
-            if rpm -q ${linuxqq_package_name} &> /dev/null; then
+            if rpm -q ${linuxqq_package_name} &>/dev/null; then
                 linuxqq_installed_version=$(rpm -q --queryformat '%{VERSION}' ${linuxqq_package_name})
                 linuxqq_installed_build=${linuxqq_installed_version##*-}
                 log "${linuxqq_package_name} 已安装, 版本: ${linuxqq_installed_version}, 构建: ${linuxqq_installed_build}"
@@ -535,7 +554,7 @@ function check_linuxqq(){
                 install_linuxqq
             fi
         elif [ "${package_installer}" = "dpkg" ]; then
-            if dpkg -l | grep ${linuxqq_package_name} &> /dev/null; then
+            if dpkg -l | grep ${linuxqq_package_name} &>/dev/null; then
                 linuxqq_installed_version=$(dpkg -l | grep "^ii" | grep "linuxqq" | awk '{print $3}')
                 linuxqq_installed_build=${linuxqq_installed_version##*-}
                 log "${linuxqq_package_name} 已安装, 版本: ${linuxqq_installed_version}, 构建: ${linuxqq_installed_build}"
@@ -600,18 +619,17 @@ function install_linuxqq() {
     #         qq_download_url="${base_url}_arm64.deb"
     #     fi
     # fi
-
     if [ "${system_arch}" = "amd64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_x86_64.rpm"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_x86_64.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_amd64.deb"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_amd64.deb"
         fi
     elif [ "${system_arch}" = "arm64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_aarch64.rpm"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_aarch64.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/5aa2d8d6/linuxqq_3.2.17-34740_arm64.deb"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/a5fab4ff/linuxqq_3.2.18-36580_arm64.deb"
         fi
     fi
 
@@ -687,8 +705,11 @@ function update_linuxqq_config() {
     for conf in ${confs}; do
         log "正在修改 ${conf}..."
         sudo jq --arg targetVer "${1}" --arg buildId "${2}" \
-        '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "${conf}" > "${conf}.tmp" && \
-        sudo mv "${conf}.tmp" "${conf}" || { log "QQ配置更新失败! "; exit 1; }
+            '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "${conf}" >"${conf}.tmp" &&
+            sudo mv "${conf}.tmp" "${conf}" || {
+            log "QQ配置更新失败! "
+            exit 1
+        }
     done
     log "更新用户QQ配置成功..."
 }
@@ -708,9 +729,9 @@ function check_napcat() {
     else
         if [ -d "${TARGET_FOLDER}/napcat" ]; then
             napcat_installed_version=$(jq -r '.version' "${TARGET_FOLDER}/napcat/package.json")
-            IFS='.' read -r i1 i2 i3 <<< "${napcat_installed_version}"
-            IFS='.' read -r t1 t2 t3 <<< "${napcat_target_version}"
-            if (( i1 < t1 || (i1 == t1 && i2 < t2) || (i1 == t1 && i2 == t2 && i3 < t3) )); then
+            IFS='.' read -r i1 i2 i3 <<<"${napcat_installed_version}"
+            IFS='.' read -r t1 t2 t3 <<<"${napcat_target_version}"
+            if ((i1 < t1 || (i1 == t1 && i2 < t2) || (i1 == t1 && i2 == t2 && i3 < t3))); then
                 install_napcat
             else
                 log "已安装最新版本, 无需更新。"
@@ -738,7 +759,8 @@ function install_napcat() {
 
     sudo chmod -R 777 "${TARGET_FOLDER}/napcat/"
     log "正在修补文件..."
-    sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
+    # TODO: FIXME: 实际上下面的这种重定向会导致权限问题 ,但是由于脚本在启动时强制要求了必须使用root权限运行, 所以这里的bug并不会被触发
+    sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" >/opt/QQ/resources/app/loadNapCat.js
     if [ $? -ne 0 ]; then
         log "loadNapCat.js文件写入失败, 请检查错误。"
         clean
@@ -753,7 +775,7 @@ function install_napcat() {
 function modify_qq_config() {
     log "正在修改QQ启动配置..."
 
-    if sudo jq '.main = "./loadNapCat.js"' /opt/QQ/resources/app/package.json > ./package.json.tmp; then
+    if sudo jq '.main = "./loadNapCat.js"' /opt/QQ/resources/app/package.json >./package.json.tmp; then
         sudo mv ./package.json.tmp /opt/QQ/resources/app/package.json
         echo "修改QQ启动配置成功..."
     else
@@ -801,7 +823,7 @@ function install_napcat_cli() {
     if [ $? -ne 0 ]; then
         log "错误: TUI-CLI 安装脚本 ${cli_script_name} 下载失败。"
         sudo rm -f "${cli_script_local_path}" # Clean up potentially partial download
-        return 1 # Indicate failure
+        return 1                              # Indicate failure
     fi
 
     log "设置 TUI-CLI 安装脚本权限..."
@@ -818,11 +840,11 @@ function install_napcat_cli() {
 
     exit_status=$? # Capture the exit status of the external script
     if [ ${exit_status} -ne 0 ]; then
-         log "外部 TUI-CLI 安装脚本执行失败 (退出码: ${exit_status})。"
-         # Decide if this should be a fatal error for the main script
-         # return 1
+        log "外部 TUI-CLI 安装脚本执行失败 (退出码: ${exit_status})。"
+        # Decide if this should be a fatal error for the main script
+        # return 1
     else
-         log "外部 TUI-CLI 安装脚本执行成功。"
+        log "外部 TUI-CLI 安装脚本执行成功。"
     fi
 
     log "清理 TUI-CLI 安装脚本 (${cli_script_local_path})..."
@@ -908,7 +930,7 @@ function get_confirm() {
 }
 
 function docker_install() {
-    if ! command -v docker &> /dev/null; then
+    if ! command -v docker &>/dev/null; then
         detect_package_manager
         if [ "${package_manager}" = "apt-get" ]; then
             execute_command "sudo apt-get update -y -qq" "更新软件包列表"
@@ -968,12 +990,12 @@ function docker_install() {
         fi
 
         case ${confirm} in
-            y|Y ) break;;
-            * )
-                confirm=""
-                mode=""
-                qq=""
-                ;;
+        y | Y) break ;;
+        *)
+            confirm=""
+            mode=""
+            qq=""
+            ;;
         esac
     done
 
@@ -1047,7 +1069,7 @@ function chekc_whiptail() {
         exit 1
     fi
 
-    if ! command -v whiptail &> /dev/null; then
+    if ! command -v whiptail &>/dev/null; then
         log "未发现whiptail, 开始安装..."
         detect_package_manager
 
@@ -1068,35 +1090,35 @@ function main_tui() {
     while true; do
         choice=$(
             whiptail --title "Napcat Installer" \
-            --menu "\n欢迎使用Napcat安装脚本\n请使用方向键(鼠标滚轮)+回车键使用" 12 50 3 \
-            "1" "🐚 shell安装" \
-            "2" "🐋 docker安装" \
-            "3" "🚪 退出" 3>&1 1>&2 2>&3
-            )
+                --menu "\n欢迎使用Napcat安装脚本\n请使用方向键(鼠标滚轮)+回车键使用" 12 50 3 \
+                "1" "🐚 shell安装" \
+                "2" "🐋 docker安装" \
+                "3" "🚪 退出" 3>&1 1>&2 2>&3
+        )
 
         case $choice in
-            "1")
-                install_dependency
-                download_napcat
-                check_linuxqq
-                check_napcat
-                check_napcat_cli
-                whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
-                show_main_info
-                clean
-                ;;
-            "2")
-                get_qq
-                whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
-                ;;
-            "3")
-                clean
-                exit 0
-                ;;
-            *)  
-                clean
-                exit 0
-                ;;
+        "1")
+            install_dependency
+            download_napcat
+            check_linuxqq
+            check_napcat
+            check_napcat_cli
+            whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
+            show_main_info
+            clean
+            ;;
+        "2")
+            get_qq
+            whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
+            ;;
+        "3")
+            clean
+            exit 0
+            ;;
+        *)
+            clean
+            exit 0
+            ;;
         esac
     done
 }
